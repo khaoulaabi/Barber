@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        BUILD_DIR = "build"  // Répertoire où les fichiers seront copiés
-        DEPLOY_DIR = "C:\\Deploy"  // Répertoire cible pour le déploiement
+        BUILD_DIR = "build"  // Directory where files will be copied
+        DEPLOY_DIR = "C:\\Deploy"  // Target deployment directory
     }
 
     stages {
@@ -20,23 +20,23 @@ pipeline {
                     echo "Building project..."
 
                     bat """
-                    REM Créer les répertoires nécessaires dans 'build'
+                    REM Create necessary directories in 'build'
                     if not exist ${BUILD_DIR}\\css mkdir ${BUILD_DIR}\\css
                     if not exist ${BUILD_DIR}\\js mkdir ${BUILD_DIR}\\js
 
-                    REM Minification et optimisation des fichiers CSS
+                    REM Minify and optimize CSS files
                     echo Minifying CSS files...
                     if exist css\\*.css (
                         for %%i in (css\\*.css) do type %%i > ${BUILD_DIR}\\css\\%%~ni.min.css
                     )
 
-                    REM Minification et optimisation des fichiers JS
+                    REM Minify and optimize JS files
                     echo Minifying JS files...
                     if exist js\\*.js (
                         for %%i in (js\\*.js) do type %%i > ${BUILD_DIR}\\js\\%%~ni.min.js
                     )
 
-                    REM Copier les fichiers HTML dans le répertoire de build
+                    REM Copy HTML files into build directory
                     echo Copying HTML files...
                     if exist *.html copy *.html ${BUILD_DIR}
                     """
@@ -50,7 +50,7 @@ pipeline {
                     echo "Testing project..."
 
                     bat """
-                    REM Vérifier si les fichiers HTML, CSS et JS sont valides
+                    REM Check if HTML, CSS, and JS files are valid
                     echo Validating HTML files...
                     if exist ${BUILD_DIR}\\*.html (
                         for %%i in (${BUILD_DIR}\\*.html) do echo Validating %%i...
@@ -76,10 +76,10 @@ pipeline {
                     echo "Deploying project..."
 
                     bat """
-                    REM Préparer le répertoire de déploiement
+                    REM Prepare deployment directory
                     if not exist ${DEPLOY_DIR} mkdir ${DEPLOY_DIR}
 
-                    REM Copier les fichiers du répertoire de build vers le répertoire de déploiement
+                    REM Copy build files to deployment directory
                     echo Copying files to deployment directory...
                     xcopy ${BUILD_DIR} ${DEPLOY_DIR} /E /H /C /I /Y
 
@@ -96,10 +96,10 @@ pipeline {
         }
         always {
             echo "Cleaning up workspace..."
-              //cleanWs()
+            //cleanWs()
 
-            // Archiver les artefacts de build pour les conserver
-            archiveArtifacts artifacts: '*/build//', allowEmptyArchive: true
+            // Archive build artifacts to keep them
+            archiveArtifacts artifacts: '**/build/**', allowEmptyArchive: true
         }
     }
 }
