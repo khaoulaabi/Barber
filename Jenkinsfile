@@ -2,67 +2,104 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "my-barber-app"
-        DOCKER_REGISTRY = "khaoulakha/repohub"  // Replace with your Docker Hub repository
-        REMOTE_SERVER = "172.29.224.1"
-        REMOTE_USER = "a"  // SSH username
-        SONARQUBE_SCANNER_HOME = tool name: 'SonarQubeScanner', type: 'ToolLocation'
+        BUILD_DIR = "build"  // Répertoire où les fichiers seront copiés
+        DEPLOY_DIR = "C:\\Deploy"  // Répertoire cible pour le déploiement
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Checkout your Git repository
-                git 'https://github.com/khaoulaabi/Barber.git'
+                echo "Cloning repository..."
+                checkout scm
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build') {
             steps {
                 script {
-                    // Build the Docker image using the Dockerfile in the repository
-                    sh 'docker build -t $DOCKER_IMAGE .'
-                }
-            }
-        }
+                    echo "Building project..."
 
-        stage('Run Docker Container') {
-            steps {
-                script {
-                    // Run the Docker container to serve the application
-                    sh 'docker run -d -p 80:80 $DOCKER_IMAGE'
-                }
-            }
-        }
+                    bat """
+                    REM Créer les répertoires nécessaires dans 'build'
+                    if not exist ${BUILD_DIR}\\css mkdir ${BUILD_DIR}\\css
+                    if not exist ${BUILD_DIR}\\js mkdir ${BUILD_DIR}\\js
 
-        stage('Push to Docker Hub') {
-            steps {
-                script {
-                    // Push the Docker image to Docker Hub
-                    sh "docker push $DOCKER_REGISTRY"
-                }
-            }
-        }
+                    REM Minification et optimisation des fichiers CSS
+                    echo Minifying CSS files...
+                    if exist css\\*.css (
+                        for %%i in (css\\*.css) do type %%i > ${BUILD_DIR}\\css\\%%~ni.min.css
+                    )
 
-        stage('Deploy to Remote Server') {
-            steps {
-                script {
-                    // Deploy the app to the remote server via SSH
-                    sh """
-                        ssh -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_SERVER 'docker pull $DOCKER_REGISTRY && docker run -d -p 80:80 $DOCKER_REGISTRY'
+                    REM Minification et optimisation des fichiers JS
+                    echo Minifying JS files...
+                    if exist js\\*.js (
+                        for %%i in (js\\*.js) do type %%i > ${BUILD_DIR}\\js\\%%~ni.min.js
+                    )
+
+                    REM Copier les fichiers HTML dans le répertoire de build
+                    echo Copying HTML files...
+                    if exist *.html copy *.html ${BUILD_DIR}
                     """
                 }
             }
         }
 
-        stage('Clean up') {
+        stage('Test') {
             steps {
                 script {
-                    // Stop and remove the container after testing (optional)
-                    sh 'docker stop $(docker ps -q --filter "ancestor=$DOCKER_IMAGE")'
-                    sh 'docker rm $(docker ps -a -q --filter "ancestor=$DOCKER_IMAGE")'
+                    echo "Testing project..."
+
+                    bat """
+                    REM Vérifier si les fichiers HTML, CSS et JS sont valides
+                    echo Validating HTML files...
+                    if exist ${BUILD_DIR}\\*.html (
+                        for %%i in (${BUILD_DIR}\\*.html) do echo Validating %%i...
+                    )
+
+                    echo Validating CSS files...
+                    if exist ${BUILD_DIR}\\css\\*.min.css (
+                        for %%i in (${BUILD_DIR}\\css\\*.min.css) do echo Validating %%i...
+                    )
+
+                    echo Validating JS files...
+                    if exist ${BUILD_DIR}\\js\\*.min.js (
+                        for %%i in (${BUILD_DIR}\\js\\*.min.js) do echo Validating %%i...
+                    )
+                    """
                 }
             }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    echo "Deploying project..."
+
+                    bat """
+                    REM Préparer le répertoire de déploiement
+                    if not exist ${DEPLOY_DIR} mkdir ${DEPLOY_DIR}
+
+                    REM Copier les fichiers du répertoire de build vers le répertoire de déploiement
+                    echo Copying files to deployment directory...
+                    xcopy ${BUILD_DIR} ${DEPLOY_DIR} /E /H /C /I /Y
+
+                    echo Deployment complete. Files are ready in '${DEPLOY_DIR}'.
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Build, test, and deployment completed successfully."
+        }
+        always {
+            echo "Cleaning up workspace..."
+              //cleanWs()
+
+            // Archiver les artefacts de build pour les conserver
+            archiveArtifacts artifacts: '*/build//', allowEmptyArchive: true
         }
     }
 }
