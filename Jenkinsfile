@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'windows'  // Use a Windows agent
+    }
 
     environment {
         BUILD_DIR = "build"  // Directory where files will be copied
